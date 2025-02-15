@@ -4,6 +4,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from api.db.schemas import Book, Genre, InMemoryDB
+from fastapi import HTTPException
 
 router = APIRouter()
 
