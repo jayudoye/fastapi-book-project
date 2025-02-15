@@ -1,3 +1,5 @@
+name: CD Pipeline
+
 on:
   push:
     branches:
@@ -14,35 +16,49 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.SSH_HOST }}  # Your Azure VM IP address
+          username: ${{ secrets.SSH_USERNAME }}  # Your Azure VM username
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  # Your private SSH key for the Azure VM
           script: |
-            echo "Updating system..."
+            # Update package index and install dependencies
             sudo apt-get update -y
+            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-            echo "Installing dependencies..." # Combine apt commands for efficiency
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common docker.io docker-compose-plugin
+            # Add Docker's official GPG key
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - 
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-            echo "Configuring Docker permissions..."
-            sudo usermod -aG docker ubuntu
-            newgrp docker
+            # Install Docker
+            sudo apt-get update -y
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
-            echo "Creating project directory..." # Use a path within the runner's workspace
-            mkdir -p /home/runner/work/fastapi-book-project
+            # Add the SSH user to the Docker group
+            sudo usermod -aG docker $USER
+            sudo systemctl enable docker  # Enable Docker to start on boot
+            sudo systemctl start docker   # Start Docker service
 
-            echo "Navigating to the project directory..."
-            cd /home/runner/work/fastapi-book-project
+            # Install Docker Compose
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
 
-            if [ -d "fastapi-book-project" ]; then
-              cd fastapi-book-project
-              git reset --hard origin/main
-              git pull
-            else
+            # Verify installations
+            docker --version
+            docker-compose --version
+
+            # Navigate to home directory
+            cd /home/ubuntu/
+
+            # Clone the repository only if it doesn't exist
+            if [ ! -d "fastapi-book-project" ]; then
               git clone https://github.com/jayudoye/fastapi-book-project.git
-              cd fastapi-book-project
             fi
 
-            echo "Deploying with Docker Compose..."
-            docker compose down  # Use 'docker compose' instead of 'docker-compose'
-            docker compose up -d --build # Use 'docker compose' instead of 'docker-compose'
+            # Navigate to the project directory
+            cd fastapi-book-project
+
+            # Pull the latest changes
+            git fetch origin main
+            git reset --hard origin/main  # Ensure the latest code is pulled
+
+            # Deploy with Docker Compose
+            docker-compose up -d --build  # Rebuild and restart Docker containers
