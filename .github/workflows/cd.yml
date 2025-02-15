@@ -20,24 +20,19 @@ jobs:
           script: |
             echo "Updating system..."
             sudo apt-get update -y
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-            echo "Installing Docker..."
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-            sudo apt-get update -y
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+            echo "Installing dependencies..." # Combine apt commands for efficiency
+            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common docker.io docker-compose-plugin
 
             echo "Configuring Docker permissions..."
             sudo usermod -aG docker ubuntu
             newgrp docker
 
-            echo "Installing Docker Compose..."
-            sudo apt-get install docker-compose-plugin -y
+            echo "Creating project directory..." # Use a path within the runner's workspace
+            mkdir -p /home/runner/work/fastapi-book-project
 
             echo "Navigating to the project directory..."
-            mkdir -p /home/ubuntu/
-            cd /home/ubuntu/
+            cd /home/runner/work/fastapi-book-project
 
             if [ -d "fastapi-book-project" ]; then
               cd fastapi-book-project
@@ -49,5 +44,5 @@ jobs:
             fi
 
             echo "Deploying with Docker Compose..."
-            docker-compose down
-            docker-compose up -d --build
+            docker compose down  # Use 'docker compose' instead of 'docker-compose'
+            docker compose up -d --build # Use 'docker compose' instead of 'docker-compose'
